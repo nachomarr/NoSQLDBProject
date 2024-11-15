@@ -80,6 +80,9 @@ KEYWORDS = [
     ["Kubernetes", "contenedores", "orquestación", "DevOps"],
     ["Python", "optimización", "mejores prácticas", "eficiencia"]
 ]
+NUMBER_ENROLLMENTS = 20
+NUMBER_FOLLOW_RELATIONS = int(len(NAMES) / 10)
+NUMBER_COURSES_RELATIONS = int(len(COURSES) / 10)
 
 # Helper functions
 def random_string(length):
@@ -124,18 +127,30 @@ def generate_enrolled_course(user_ids, course_ids):
     }
 
 # Generate datasets
-def generate_dataset(num_enrollments):
+def generate_dataset():
     users = [generate_user(name) for name in NAMES]
     courses = [generate_course(COURSES[i], KEYWORDS[i], users) for i in range(len(COURSES))]
     user_ids = [user["_id"] for user in users]
     course_ids = [(course["_id"], course["instructorId"]) for course in courses]
-    enrollments = [generate_enrolled_course(user_ids, course_ids) for _ in range(num_enrollments)]
-
+    enrollments = [generate_enrolled_course(user_ids, course_ids) for _ in range(NUMBER_ENROLLMENTS)]
+    setRelations(users, courses)
     return {
         "users": users,
         "courses": courses,
         "enrolledCourses": enrollments
     }
+
+def setRelations(users, courses):
+    userIds = [user["_id"] for user in users]
+    courseIds = [course["_id"] for course in courses]
+    for i in range(len(users)):
+        selfId = users[i]["_id"]
+        randomIds = set([random.choice(userIds) for j in range(NUMBER_FOLLOW_RELATIONS)])
+        randomIds.discard(selfId)
+        users[i]["follows"] = list(randomIds)
+        users[i]["likes"] = list(set([random.choice(courseIds) for j in range(NUMBER_COURSES_RELATIONS)]))
+        users[i]["dislikes"] = list(set([random.choice(courseIds) for j in range(NUMBER_COURSES_RELATIONS)]))
+        users[i]["suscribed"] = list(set([random.choice(courseIds) for j in range(NUMBER_COURSES_RELATIONS)]))
 
 # Save dataset to JSON file
 def save_to_json(data, filename="dataset.json"):
@@ -145,5 +160,5 @@ def save_to_json(data, filename="dataset.json"):
 
 # Main function to generate and save dataset
 if __name__ == "__main__":
-    dataset = generate_dataset(20)
+    dataset = generate_dataset()
     save_to_json(dataset)
