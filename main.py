@@ -5,11 +5,16 @@ from pymongo import MongoClient
 import random
 from datetime import datetime
 from cassandra.cluster import Cluster
+import json
+
+with open('conexiones.json', 'r') as file:
+    conexiones = json.load(file)
 
 
 
 # Conexion a DRAPHDB
-DGRAPH_URI = os.getenv('DGRAPH_URI', 'localhost:9080') #Obtenemos el puerto de DGraph
+url = conexiones.get('url', 'localhost')
+DGRAPH_URI = os.getenv('DGRAPH_URI', f'{url}:9080') #Obtenemos el puerto de DGraph
 
 def create_client_stub():
     return pydgraph.DgraphClientStub(DGRAPH_URI)
@@ -24,7 +29,7 @@ def close_client_stub(client_stub):
 
 app = FastAPI()
 
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
+MONGODB_URI = os.getenv('MONGODB_URI', f'mongodb://{url}:27017')
 DB_NAME = os.getenv('MONGODB_DB_NAME', 'MongoDBFP')
 
 @app.on_event("startup")
@@ -44,7 +49,7 @@ app = FastAPI()
 date_min = datetime(1970, 1, 1, 21, 0)  
 date_max = datetime(2099, 12, 30, 21, 0)
 
-CLUSTER_IPS = os.getenv('CASSANDRA_CLUSTER_IPS', 'localhost')
+CLUSTER_IPS = os.getenv('CASSANDRA_CLUSTER_IPS', f'{url}')
 KEYSPACE = os.getenv('CASSANDRA_KEYSPACE', 'investments')
 REPLICATION_FACTOR = os.getenv('CASSANDRA_REPLICATION_FACTOR', '1')
 
