@@ -2,3 +2,4 @@ dataset.json
 /venv
 __pycache__
 conexiones.json
+.env
