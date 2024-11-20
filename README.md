@@ -5,8 +5,8 @@
 ## Profesora Anmol Khatri Pathry
 ## Integrantes del equipo:
 ## Ignacio Márquez Robles
-## Luis Antonio Cuaquentzi Avendaño
 ## Jesús Alejandro Toral Iñiguez
+## Luis Antonio Cuaquentzi Avendaño
 
 # Pasos para iniciar la aplicación de forma local
 
@@ -39,4 +39,5 @@ En Windows:
 
 ### Iniciar la aplicación
 `python main.py`
+
 

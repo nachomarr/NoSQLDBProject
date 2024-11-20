@@ -100,18 +100,17 @@ def loadData():
     deleteData()
     connection = DBconnections.CASSANDRA
     data = DBconnections.DATA
-    courses = {doc["id"]: doc for doc in data["courses"] if doc["type"] == "course"}
+    courses = {doc["id"]: doc for doc in data["courses"]}
     insertUserPrepared = connection.prepare(INSERT_USER)
     insertCourseDatePrepared = connection.prepare(INSERT_COURSE("courses_by_date"))
     insertCourseGradePrepared = connection.prepare(INSERT_COURSE("courses_by_grade"))
     for doc in data["users"]:
-        if doc["type"] == "user":
-            connection.execute(insertUserPrepared, [doc["id"], doc["email"], doc["name"], doc["phone_number"]])
-            for enrollment in doc["suscribed"]:
-                course = courses[enrollment["course_id"]]
-                arguments = [doc["id"], course["id"], course["name"], course["start_date"], course["end_date"], enrollment["final_grade"]]
-                connection.execute(insertCourseDatePrepared, arguments)
-                connection.execute(insertCourseGradePrepared, arguments)
+        connection.execute(insertUserPrepared, [doc["id"], doc["email"], doc["name"], doc["phone_number"]])
+        for enrollment in doc["suscribed"]:
+            course = courses[enrollment["course_id"]]
+            arguments = [doc["id"], course["id"], course["name"], course["start_date"], course["end_date"], enrollment["final_grade"]]
+            connection.execute(insertCourseDatePrepared, arguments)
+            connection.execute(insertCourseGradePrepared, arguments)
 
 def deleteData():
     connection = DBconnections.CASSANDRA
