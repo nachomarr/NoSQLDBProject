@@ -4,8 +4,8 @@ import src.dgraph as dgraph
 
 def loadData():
     cassandra.loadData()
-    mongo.loadData()
     dgraph.loadData()
+    mongo.loadData()
     print("Data loaded succesfully")
 
 def deleteData():
