@@ -20,6 +20,10 @@ MENU = [
     ("Find courses by date range", cassandra.getCoursesByDateRange),
     ("Find active courses", cassandra.getActiveCourses),
     ("Find courses by final grade", cassandra.getCoursesByFinalGrade),
+    ("Get user data by email", mongo.getUserData),
+    ("Get course details by ID", mongo.getCourseDetails),
+    ("Search courses by title", mongo.searchCoursesByTitle),
+    ("Search courses by instructor", mongo.searchCoursesByInstructor),
     ("Delete data", deleteData),
     ("Exit", None)
 ]
