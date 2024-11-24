@@ -224,38 +224,55 @@ def getFollows():
 def getLikesandDislikes():
     connection = DBconnections.DGRAPH
     getFollows()
-    username = input("Enter the name of the course you want to see their 👍 & 👎: ")
+    
+    # Prompt for the username (course name)
+    username = input("Enter the name of the course you want to see their 👍 & 👎: ").strip()
 
-    query = """query getLikesDislikes($a: string) {
+    # Check if the username is empty
+    if not username:
+        print("Error: You must enter a valid course name.")
+        return  # Exit the function early if no input is provided
+
+    query = """
+    query getLikesDislikes($a: string) {
         all(func:eq(name,$a)){
-        likes{
-            name
-        }
-        dislikes{
-            name
-        }
+            likes {
+                name
+            }
+            dislikes {
+                name
+            }
         }
     }
     """
 
-    variable = {'$a':username}
-    res = connection.txn(read_only=True).query(query, variables=variable)
-    data = json.loads(res.json)
-
-    likes = data['all'][0].get('likes', [])
-    print(f"{username} likes a total of {len(likes)} courses")
-        
-    print(f"the names are: ")
-    for like in likes:
-        print(" -",like["name"])
+    variable = {'$a': username}
     
-    print("\n")
-    dislikes = data['all'][0].get('dislikes', [])
-    print(f"{username} dislikes a total of {len(dislikes)} courses")
+    try:
+        
+        res = connection.txn(read_only=True).query(query, variables=variable)
+        data = json.loads(res.json)
 
-    print(f"the names are: ")
-    for dislike in dislikes:
-        print(" -",dislike["name"])
+       
+        if 'all' not in data or len(data['all']) == 0:
+            print(f"No data found for course '{username}'.")
+            return  
+        
+        likes = data['all'][0].get('likes', [])
+        print(f"{username} likes a total of {len(likes)} courses")
+        print("The names are: ")
+        for like in likes:
+            print(" -", like["name"])
+
+        dislikes = data['all'][0].get('dislikes', [])
+        print(f"\n{username} dislikes a total of {len(dislikes)} courses")
+        print("The names are: ")
+        for dislike in dislikes:
+            print(" -", dislike["name"])
+
+    except Exception as e:
+        print(f"Error while querying Dgraph: {e}")
+
 
 def getCurrentCourses():
     connection = DBconnections.DGRAPH
