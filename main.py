@@ -7,6 +7,6 @@ import src.menu as menu
 load_dotenv()
 DBconnections.startConnections()
 cassandra.loadSchema()
-dgraph.loadSchema()
+dgraph.loadSchema(DBconnections.DGRAPH)
 menu.runApp()
 DBconnections.closeConnections()
