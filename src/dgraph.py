@@ -1,4 +1,3 @@
-import datetime
 import json
 import pydgraph 
 from src.databases import DBconnections
@@ -20,25 +19,28 @@ def loadSchema(client):
         c_uid
         name
         description
-        regristation_spaces
+        registration_spaces
         keywords
         mode
+        start_date
+        end_date
+        
 
     }
 
-    c_uid: string @index(hash) .
+    c_uid: string @index(exact) .
     name: string  @index(exact).
-    email: string .
-    phone_number: string .
     likes: [uid] . 
     dislikes: [uid] .
     suscribed: [uid] .
-    teaches: [uid] .  
+    teaches: [uid] @reverse .  
     description: string .
     keywords: [string] .
     mode: string .
-    regristation_spaces: int .
+    registration_spaces: int .
     follows: [uid] .
+    start_date: string .
+    end_date: string .
     """
     try:
         client.alter(pydgraph.Operation(schema=schema))
@@ -79,10 +81,11 @@ def obtainCourse(course):
     spaces = course["registration_spaces"]
     keywords = course["keywords"]
     mode = course["mode"]
+    start_date = course["start_date"]
+    end_date = course["end_date"]
 
-    upload_course(id,nameCourse,descriptionCourse,spaces,keywords,mode)
+    upload_course(id,nameCourse,descriptionCourse,spaces,keywords,mode,start_date,end_date)
     
-
 def checkUID(uid):
     connection = DBconnections.DGRAPH
 
@@ -111,7 +114,6 @@ def proccess_data(list,dgraph_type):
         proccessed_list.append({"uid": obj_uid, "c_uid": obj, "dgraph.type": dgraph_type})
 
     return proccessed_list
-
 
 def upload_user(id,name,likeList,dislikeList,suscribedList,teachingList,followsList):
     connection = DBconnections.DGRAPH
@@ -151,7 +153,7 @@ def upload_user(id,name,likeList,dislikeList,suscribedList,teachingList,followsL
     finally:
         txn.discard()
 
-def upload_course(id,nameCourse,descriptionCourse,spaces,keywords,mode):
+def upload_course(id,nameCourse,descriptionCourse,spaces,keywords,mode,start_date,end_date):
     connection = DBconnections.DGRAPH
     txn = connection.txn()
 
@@ -170,16 +172,17 @@ def upload_course(id,nameCourse,descriptionCourse,spaces,keywords,mode):
             "description":descriptionCourse,
             "registration_spaces":spaces,
             "keywords":keywords,
-            "mode":mode
+            "mode":mode,
+            "start_date":start_date,
+            "end_date":end_date
         }
+
         txn.mutate(set_obj=course)
         txn.commit()
     except Exception as e:
         print(f"Error during creation of course: {e}")
     finally:
         txn.discard()
-
-
 
 def loadData():
     
@@ -189,6 +192,215 @@ def loadData():
         obtainUser(user)
     for course in data.get("courses"):
         obtainCourse(course)
+
+def getFollows():
+    connection = DBconnections.DGRAPH
+
+    username = input("Enter your username: ")
+    query = """query get_Follows($a: string) {
+        all(func:eq(name,$a)){
+        follows{
+            name
+        }
+        }
+    
+    }
+    """
+    variable = {'$a':username}
+    res = connection.txn(read_only=True).query(query, variables=variable)
+    data = json.loads(res.json)
+
+    if 'all' in data and len(data['all']) > 0:
+        follows = data['all'][0].get('follows', [])
+        print(f"{username} is following a total of {len(follows)} people")
+        
+        print(f"the names are: ")
+        for follow in follows:
+            print(" -",follow["name"])
+
+    else:
+        print(f"{username} is not following anyone.")
+
+def getLikesandDislikes():
+    connection = DBconnections.DGRAPH
+    getFollows()
+    username = input("Enter the name of the course you want to see their 👍 & 👎: ")
+
+    query = """query getLikesDislikes($a: string) {
+        all(func:eq(name,$a)){
+        likes{
+            name
+        }
+        dislikes{
+            name
+        }
+        }
+    }
+    """
+
+    variable = {'$a':username}
+    res = connection.txn(read_only=True).query(query, variables=variable)
+    data = json.loads(res.json)
+
+    likes = data['all'][0].get('likes', [])
+    print(f"{username} likes a total of {len(likes)} courses")
+        
+    print(f"the names are: ")
+    for like in likes:
+        print(" -",like["name"])
+    
+    print("\n")
+    dislikes = data['all'][0].get('dislikes', [])
+    print(f"{username} dislikes a total of {len(dislikes)} courses")
+
+    print(f"the names are: ")
+    for dislike in dislikes:
+        print(" -",dislike["name"])
+
+def getCurrentCourses():
+    connection = DBconnections.DGRAPH
+    username = input("Enter your username: ")
+    query = """query getCurrentCourses($a: string) {
+        all(func:eq(name,$a)){
+        suscribed{
+            name
+            TeachedBy: ~teaches{
+                name
+                }
+        }
+        }
+    
+    }
+    """
+
+    variable = {'$a':username}
+    res = connection.txn(read_only=True).query(query, variables=variable)
+    data = json.loads(res.json)
+
+    if 'all' in data and len(data['all']) > 0:
+        user_data = data['all'][0]
+        courses = user_data.get('suscribed', [])
+        print(f"{username} is subscribed to {len(courses)} courses")
+        
+        print("The courses and their instructors are:")
+        for course in courses:
+            course_name = course.get("name", "Unknown Course")
+            teachers = course.get("TeachedBy", [])
+            
+            print(f" - {course_name}")
+            if teachers:
+                print("Taught by:")
+                for teacher in teachers:
+                    print(f"     - {teacher.get('name', 'Unknown Teacher')}")
+            else:
+                print("   No instructors found for this course.")
+    else:
+        print(f"{username} is not subscribed to any courses.")
+
+def ProfessorCourses(professor):
+    connection = DBconnections.DGRAPH
+
+    query = """
+    query allTeachers($name: string) {
+      allTeachers(func: eq(name, $name)) {
+        teaches {
+          name
+          start_date
+          end_date
+          mode
+          registration_spaces
+        }
+      }
+    }
+    """
+
+    variables = {"$name":professor}
+    res = connection.txn(read_only=True).query(query, variables=variables)
+    data = json.loads(res.json)
+
+    if "allTeachers" in data and len(data["allTeachers"]) > 0:
+        teaches = data["allTeachers"][0].get("teaches", [])
+        print(f"Courses taught by {professor}:")
+        for course in teaches:
+            print(f"- Name: {course['name']}")
+            print(f"  Start Date: {course.get('start_date', 'N/A')}")
+            print(f"  End Date: {course.get('end_date', 'N/A')}")
+            print(f"  Mode: {course.get('mode', 'N/A')}")
+            print(f"  Registration Spaces: {course.get('registration_spaces', 'N/A')}")
+            print()
+    else:
+        print(f"No courses found for teacher '{professor}'.")
+
+import json
+import pydgraph
+
+def FollowsCourse(FollowsOption):
+    connection = DBconnections.DGRAPH  # Assuming this connects to Dgraph
+    query = """
+    query FollowOption($name: string) {
+      FollowOption(func: eq(name, $name)) {
+        suscribed {
+          name
+          start_date
+          end_date
+          mode
+          registration_spaces
+        }
+      }
+    }
+    """
+
+    # Set the variables for the query
+    variables = {"$name": FollowsOption}
+
+    try:
+        # Execute the query in read-only mode
+        res = connection.txn(read_only=True).query(query, variables=variables)
+
+        # Parse the JSON response
+        data = json.loads(res.json)
+
+        # Check if the query returned any data
+        if "FollowOption" in data and len(data["FollowOption"]) > 0:
+            suscribed_courses = data["FollowOption"][0].get("suscribed", [])
+            if suscribed_courses:
+                print(f"Courses suscribed by {FollowsOption}:")
+                for course in suscribed_courses:
+                    print(f"- Name: {course['name']}")
+                    print(f"  Start Date: {course.get('start_date', 'N/A')}")
+                    print(f"  End Date: {course.get('end_date', 'N/A')}")
+                    print(f"  Mode: {course.get('mode', 'N/A')}")
+                    print(f"  Registration Spaces: {course.get('registration_spaces', 'N/A')}")
+                    print()
+            else:
+                print(f"No courses found for user '{FollowsOption}'.")
+        else:
+            print(f"No such user found with the name '{FollowsOption}'.")
+
+    except Exception as e:
+        print(f"Error while querying Dgraph: {e}")
+
+
+
+
+def recomendedCourses():
+
+    print("View recomendation by \n 1. Current Professor? \n 2. Follows?")
+    option = int(input("Choose 1 or 2: "))
+
+    if option == 1:
+        getCurrentCourses()
+        print("\n")
+        ProfessorOption = input("Choose the professor: ")
+        print("---------------------------")
+        ProfessorCourses(ProfessorOption)
+        print("\n")
+    elif option == 2:
+        getFollows()
+        FollowsOption = input("Choose the follower:")
+        print("---------------------------")
+        FollowsCourse(FollowsOption)
+        print("\n")
 
 
 def deleteData():

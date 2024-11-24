@@ -20,6 +20,9 @@ MENU = [
     ("Find courses by date range", cassandra.getCoursesByDateRange),
     ("Find active courses", cassandra.getActiveCourses),
     ("Find courses by final grade", cassandra.getCoursesByFinalGrade),
+    ("View follows", dgraph.getFollows),
+    ("View Likes and Dislikes from users",dgraph.getLikesandDislikes),
+    ("View Recommended Courses",dgraph.recomendedCourses),
     ("Delete data", deleteData),
     ("Exit", None)
 ]
