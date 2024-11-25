@@ -31,32 +31,81 @@ def getUserData():
     email = input("Enter user's email: ")
     user = DBconnections.MONGO['users'].find_one({'email': email})
     if user:
-        user = (
-            f"User:\n"
-            f"Name: {user.get('name', 'N/A')}\n"
-            f"Email: {user.get('email', 'N/A')}\n"
-            f"Phone Number: {user.get('phone_number', 'N/A')}\n"
-            f"Follows: {', '.join(user.get('follows', [])) if user.get('follows') else 'None'}\n"
-            f"Likes: {', '.join(user.get('likes', [])) if user.get('likes') else 'None'}\n"
-            f"Dislikes: {', '.join(user.get('dislikes', [])) if user.get('dislikes') else 'None'}\n"
-            f"Subscribed Courses: {', '.join([sub['course_id'] for sub in user.get('suscribed', [])]) if user.get('suscribed') else 'None'}\n"
-            f"Teaches: {', '.join(user.get('teaches', [])) if user.get('teaches') else 'None'}"
-        )
-        print(user)
+        print("User Details:")
+        print(f"Name: {user.get('name', 'N/A')}")
+        print(f"Email: {user.get('email', 'N/A')}")
+        print(f"Phone Number: {user.get('phone_number', 'N/A')}")
+        
+        follows = user.get('follows', [])
+        if follows:
+            print(f"Follows ({len(follows)} users):")
+            for user_id in follows[:3]:
+                followed_user = DBconnections.MONGO['users'].find_one({'id': user_id})
+                if followed_user:
+                    print(f"  - Name: {followed_user.get('name', 'N/A')} (ID: {user_id})")
+            if len(follows) > 3:
+                print(f"  ... and {len(follows) - 3} more")
+        else:
+            print("Follows: None")
+        
+        likes = user.get('likes', [])
+        if likes:
+            print(f"Likes ({len(likes)} courses):")
+            for course_id in likes[:3]:
+                liked_course = DBconnections.MONGO['courses'].find_one({'id': course_id})
+                if liked_course:
+                    print(f"  - Name: {liked_course.get('name', 'N/A')} (ID: {course_id})")
+            if len(likes) > 3:
+                print(f"  ... and {len(likes) - 3} more")
+        else:
+            print("Likes: None")
+        
+        dislikes = user.get('dislikes', [])
+        print(f"Dislikes: {len(dislikes)} courses" if dislikes else "Dislikes: None")
+        
+        subscribed_courses = user.get('suscribed', [])
+        if subscribed_courses:
+            print(f"Subscribed Courses ({len(subscribed_courses)}):")
+            for sub in subscribed_courses[:3]:
+                course = DBconnections.MONGO['courses'].find_one({'id': sub['course_id']})
+                if course:
+                    print(f"  - Name: {course.get('name', 'N/A')} (ID: {sub['course_id']})")
+            if len(subscribed_courses) > 3:
+                print(f"  ... and {len(subscribed_courses) - 3} more")
+        else:
+            print("Subscribed Courses: None")
+        
+        teaches = user.get('teaches', [])
+        print(f"Teaches: {len(teaches)} courses" if teaches else "Teaches: None")
     else:
         print("User not found")
 
 def getCourseDetails():
     course_id = input("Enter course ID: ")
-    course = DBconnections.MONGO['courses'].find_one({'id': course_id}) 
-    print(course if course else "Course not found")
+    course = DBconnections.MONGO['courses'].find_one({'id': course_id})
+    if course:
+        print("Course Details:")
+        print(f"Name: {course.get('name', 'N/A')}")
+        print(f"Description: {course.get('description', 'N/A')}")
+        print(f"Start Date: {course.get('start_date', 'N/A')}")
+        print(f"End Date: {course.get('end_date', 'N/A')}")
+        print(f"Instructor ID: {course.get('instructor_id', 'N/A')}")
+        print(f"Registration Spaces: {course.get('registration_spaces', 'N/A')}")
+        keywords = course.get('keywords', [])
+        print(f"Keywords: {', '.join(keywords) if keywords else 'None'}")
+        print(f"Mode: {course.get('mode', 'N/A')}")
+    else:
+        print("Course not found")
 
 def searchCoursesByTitle():
     title = input("Enter course title: ")
     courses = list(DBconnections.MONGO['courses'].find({'name': {'$regex': title, '$options': 'i'}})) 
     if courses:
-        for course in courses:
-            print(course)
+        print(f"Found {len(courses)} course(s) matching the title '{title}':")
+        for course in courses[:3]:  # Mostrar solo los primeros 3 cursos
+            print(f"  - Name: {course.get('name', 'N/A')} (ID: {course.get('id', 'N/A')})")
+        if len(courses) > 3:
+            print(f"  ... and {len(courses) - 3} more")
     else:
         print("No courses found with that title")
 
@@ -67,8 +116,11 @@ def searchCoursesByInstructor():
         instructor_id = instructor['id']
         courses = list(DBconnections.MONGO['courses'].find({'instructor_id': instructor_id}))
         if courses:
-            for course in courses:
-                print(course)
+            print(f"Found {len(courses)} course(s) taught by '{instructor_name}':")
+            for course in courses[:3]:  # Mostrar solo los primeros 3 cursos
+                print(f"  - Name: {course.get('name', 'N/A')} (ID: {course.get('id', 'N/A')})")
+            if len(courses) > 3:
+                print(f"  ... and {len(courses) - 3} more")
         else:
             print("No courses found for that instructor")
     else:
