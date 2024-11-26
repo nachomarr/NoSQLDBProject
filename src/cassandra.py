@@ -1,6 +1,12 @@
 import os
 import datetime
 from src.databases import DBconnections
+from src.login import Login
+
+login = Login()
+username = login.checklogin()["username"]
+email = login.checklogin()["email"]
+
 
 KEYSPACE_NAME = os.getenv('CASSANDRA_KEYSPACE', 'cassandra_final_project')
 KEYSPACE_REPLICATION = os.getenv('CASSANDRA_REPLICATION_FACTOR', 1)
@@ -119,7 +125,6 @@ def deleteData():
     connection.execute(DELETE_ALL_COURSES("courses_by_grade"))
 
 def getUserData():
-    email = input("Email: ")
     connection = DBconnections.CASSANDRA
     prepared = connection.prepare(SELECT_USER)
     data = connection.execute(prepared, [email])
