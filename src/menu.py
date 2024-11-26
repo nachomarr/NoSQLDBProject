@@ -1,6 +1,7 @@
 import src.cassandra as cassandra
 import src.mongo as mongo
 import src.dgraph as dgraph
+from src.login import Login
 
 def loadData():
     cassandra.loadData()
@@ -32,6 +33,8 @@ MENU = [
 ]
 
 def runApp():
+    user = Login()
+    user.checklogin()
     selected = None
     while selected != len(MENU):
         printMenu()
