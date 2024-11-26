@@ -1,7 +1,9 @@
 import json
 import pydgraph 
 from src.databases import DBconnections
-
+from src.login import Login
+login = Login()
+username = login.checklogin()["username"]
 
 def loadSchema(client):
     schema = """
@@ -29,7 +31,7 @@ def loadSchema(client):
     }
 
     c_uid: string @index(exact) .
-    name: string  @index(exact).
+    name: string  @index(exact) @lang .
     likes: [uid] . 
     dislikes: [uid] .
     suscribed: [uid] .
@@ -44,7 +46,7 @@ def loadSchema(client):
     """
     try:
         client.alter(pydgraph.Operation(schema=schema))
-        print("Se creo el Esquema Dgraph :))")
+        print("Se creo el esquema de Dgraph :)")
     except Exception as e:
         print(f"Error en el esquema DGRAPH: {e}")
 
@@ -187,6 +189,7 @@ def upload_course(id,nameCourse,descriptionCourse,spaces,keywords,mode,start_dat
 def loadData():
     
     data = DBconnections.DATA
+    loadSchema(DBconnections.DGRAPH)
     
     for user in data.get("users"):
         obtainUser(user)
@@ -196,7 +199,6 @@ def loadData():
 def getFollows():
     connection = DBconnections.DGRAPH
 
-    username = input("Enter your username: ")
     query = """query get_Follows($a: string) {
         all(func:eq(name,$a)){
         follows{
@@ -225,13 +227,11 @@ def getLikesandDislikes():
     connection = DBconnections.DGRAPH
     getFollows()
     
-    # Prompt for the username (course name)
-    username = input("Enter the name of the course you want to see their 👍 & 👎: ").strip()
+    username = input("Enter the name of the person you want to see their 👍 & 👎: ").strip()
 
-    # Check if the username is empty
     if not username:
-        print("Error: You must enter a valid course name.")
-        return  # Exit the function early if no input is provided
+        print("Error: You must enter a valid username.")
+        return  
 
     query = """
     query getLikesDislikes($a: string) {
@@ -276,7 +276,6 @@ def getLikesandDislikes():
 
 def getCurrentCourses():
     connection = DBconnections.DGRAPH
-    username = input("Enter your username: ")
     query = """query getCurrentCourses($a: string) {
         all(func:eq(name,$a)){
         suscribed{
@@ -348,11 +347,43 @@ def ProfessorCourses(professor):
     else:
         print(f"No courses found for teacher '{professor}'.")
 
-import json
-import pydgraph
+
+def printCourse(RCOURSE):
+    connection = DBconnections.DGRAPH
+
+    query = """
+    query PrintCourses($name:string){
+        PrintCourses(func:eq(name,$name)) {
+            description
+            registration_spaces
+            keywords
+            mode
+        }
+    }
+    """
+    variables = {"$name": RCOURSE}
+
+    try:
+        res = connection.txn(read_only=True).query(query, variables=variables)
+        data = json.loads(res.json)
+        if "PrintCourses" in data and len(data["PrintCourses"]) > 0:
+            course_data = data["PrintCourses"][0]  # Assuming only one course is returned
+
+            # Print the course data in a styled manner
+            print(f"Course Information for: {RCOURSE}")
+            print(f"Description: {course_data.get('description')}")
+            print(f"Registration Spaces: {course_data.get('registration_spaces')}")
+            print(f"Keywords: {course_data.get('keywords')}")
+            print(f"Mode: {course_data.get('mode')}")
+        else:
+            print(f"No course found with the name '{RCOURSE}'.")
+    except Exception as e:
+        print(f"Error while querying Dgraph: {e}")
+    print("----------------\n")
+
 
 def FollowsCourse(FollowsOption):
-    connection = DBconnections.DGRAPH  # Assuming this connects to Dgraph
+    connection = DBconnections.DGRAPH
     query = """
     query FollowOption($name: string) {
       FollowOption(func: eq(name, $name)) {
@@ -363,40 +394,48 @@ def FollowsCourse(FollowsOption):
           mode
           registration_spaces
         }
+        likes {
+            name
+        }
       }
     }
     """
 
-    # Set the variables for the query
     variables = {"$name": FollowsOption}
+    suscribed_courses_list = []
+    liked_courses_list = []
 
     try:
-        # Execute the query in read-only mode
         res = connection.txn(read_only=True).query(query, variables=variables)
 
-        # Parse the JSON response
         data = json.loads(res.json)
 
-        # Check if the query returned any data
         if "FollowOption" in data and len(data["FollowOption"]) > 0:
             suscribed_courses = data["FollowOption"][0].get("suscribed", [])
             if suscribed_courses:
-                print(f"Courses suscribed by {FollowsOption}:")
                 for course in suscribed_courses:
-                    print(f"- Name: {course['name']}")
-                    print(f"  Start Date: {course.get('start_date', 'N/A')}")
-                    print(f"  End Date: {course.get('end_date', 'N/A')}")
-                    print(f"  Mode: {course.get('mode', 'N/A')}")
-                    print(f"  Registration Spaces: {course.get('registration_spaces', 'N/A')}")
-                    print()
+                    suscribed_courses_list.append(course["name"])
             else:
                 print(f"No courses found for user '{FollowsOption}'.")
+            liked_courses = data["FollowOption"][0].get("likes", [])
+            if liked_courses:
+                for course in liked_courses:
+                    liked_courses_list.append(course["name"])
+            else:
+                print(f"No liked courses found for user '{FollowsOption}'.")
+            suscribed_names = set(suscribed_courses_list)
+            liked_names = set(liked_courses_list)
+            common_courses_names = list(suscribed_names.intersection(liked_names))
+            
+            for RCOURSE in common_courses_names:
+                printCourse(RCOURSE)
+
         else:
             print(f"No such user found with the name '{FollowsOption}'.")
 
     except Exception as e:
         print(f"Error while querying Dgraph: {e}")
-
+    
 
 
 
