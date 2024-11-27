@@ -42,7 +42,10 @@ def runApp():
         selected = input("Enter your choice: ")
         selected = int(selected) if selected.isdigit() else selected
         if isinstance(selected, int) and 1 <= selected < len(MENU):
-            MENU[selected-1][1]()
+            try:
+                MENU[selected-1][1]()
+            except:
+                print("Something went wrong")
         elif selected != len(MENU):
             print("Invalid option")
         print()
