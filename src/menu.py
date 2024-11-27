@@ -25,6 +25,7 @@ MENU = [
     ("Get course details by ID", mongo.getCourseDetails),
     ("Search courses by title", mongo.searchCoursesByTitle),
     ("Search courses by instructor", mongo.searchCoursesByInstructor),
+    ("Average Final Per Course", mongo.getAverageFinalGradePerCourse),
     ("View follows", dgraph.getFollows),
     ("View Likes and Dislikes from users",dgraph.getLikesandDislikes),
     ("View Recommended Courses",dgraph.recomendedCourses),

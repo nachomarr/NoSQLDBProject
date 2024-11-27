@@ -1,6 +1,12 @@
 import json
 from src.databases import DBconnections
 
+def createIndexes():
+    
+    DBconnections.MONGO['users'].create_index('email', unique=True)
+    DBconnections.MONGO['courses'].create_index('instructor_id')
+
+
 def loadData():
     try:
         with open("data/dataset.json", "r") as file:
@@ -26,6 +32,20 @@ def loadData():
 def deleteData():
     DBconnections.MONGO['users'].delete_many({})
     DBconnections.MONGO['courses'].delete_many({})
+
+
+def paginateResults(results, page_size=5, format_func=lambda x: x):
+
+    index = 0
+    while index < len(results):
+        for res in results[index:index + page_size]:
+            print(format_func(res))
+        index += page_size
+        if index < len(results):
+            user_input = input("Press Enter to see more results or any other key to quit: ")
+            if user_input.lower() != '':
+                break
+
 
 def getUserData():
     email = input("Enter user's email: ")
@@ -97,17 +117,19 @@ def getCourseDetails():
     else:
         print("Course not found")
 
+
 def searchCoursesByTitle():
     title = input("Enter course title: ")
-    courses = list(DBconnections.MONGO['courses'].find({'name': {'$regex': title, '$options': 'i'}})) 
+    courses = list(DBconnections.MONGO['courses'].find({'name': {'$regex': title, '$options': 'i'}}).sort('average_grade')) 
     if courses:
         print(f"Found {len(courses)} course(s) matching the title '{title}':")
-        for course in courses[:3]:  # Mostrar solo los primeros 3 cursos
-            print(f"  - Name: {course.get('name', 'N/A')} (ID: {course.get('id', 'N/A')})")
-        if len(courses) > 3:
-            print(f"  ... and {len(courses) - 3} more")
+        paginateResults(
+            courses, 
+            format_func=lambda x: f"  - Name: {x.get('name', 'N/A')} (ID: {x.get('id', 'N/A')})"
+        )
     else:
         print("No courses found with that title")
+
 
 def searchCoursesByInstructor():
     instructor_name = input("Enter instructor name: ")
@@ -125,3 +147,45 @@ def searchCoursesByInstructor():
             print("No courses found for that instructor")
     else:
         print("Instructor not found")
+
+
+
+def getAverageFinalGradePerCourse():
+
+    pipeline = [
+        {
+            '$unwind': '$suscribed'
+        },
+        {
+            '$group': {
+                '_id': '$suscribed.course_id',
+                'average_grade': {'$avg': '$suscribed.final_grade'}
+            }
+        },
+        {
+            '$lookup': {
+                'from': 'courses',
+                'localField': '_id',
+                'foreignField': 'id',
+                'as': 'course_details'
+            }
+        },
+        {
+            '$unwind': '$course_details'
+        },
+        {
+            '$project': {
+                'course_name': '$course_details.name',
+                'course_id': '$_id',
+                'average_grade': 1
+            }
+        }
+    ]
+    result = list(DBconnections.MONGO['users'].aggregate(pipeline))
+    if result:
+        paginateResults(
+            result, 
+            format_func=lambda x: f"Course Name: {x.get('course_name', 'N/A')}, Course ID: {x.get('course_id', 'N/A')}, Average Final Grade: {x.get('average_grade', 0):.2f}"
+        )
+    else:
+        print("No data available for average final grades.")
