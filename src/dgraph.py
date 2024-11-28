@@ -30,8 +30,8 @@ def loadSchema(client):
 
     }
 
-    c_uid: string @index(exact) .
-    name: string  @index(exact) @lang .
+    c_uid: string @index(hash) .
+    name: string  @index(fulltext) .
     likes: [uid] . 
     dislikes: [uid] .
     suscribed: [uid] .
@@ -200,7 +200,7 @@ def getFollows():
     connection = DBconnections.DGRAPH
 
     query = """query get_Follows($a: string) {
-        all(func:eq(name,$a)){
+        all(func:alloftext(name,$a)){
         follows{
             name
         }
@@ -235,7 +235,7 @@ def getLikesandDislikes():
 
     query = """
     query getLikesDislikes($a: string) {
-        all(func:eq(name,$a)){
+        all(func:alloftext(name,$a)){
             likes {
                 name
             }
@@ -277,7 +277,7 @@ def getLikesandDislikes():
 def getCurrentCourses():
     connection = DBconnections.DGRAPH
     query = """query getCurrentCourses($a: string) {
-        all(func:eq(name,$a)){
+        all(func:alloftext(name,$a)){
         suscribed{
             name
             TeachedBy: ~teaches{
@@ -318,7 +318,7 @@ def ProfessorCourses(professor):
 
     query = """
     query allTeachers($name: string) {
-      allTeachers(func: eq(name, $name)) {
+      allTeachers(func: alloftext(name, $name)) {
         teaches {
           name
           start_date
@@ -353,7 +353,7 @@ def printCourse(RCOURSE):
 
     query = """
     query PrintCourses($name:string){
-        PrintCourses(func:eq(name,$name)) {
+        PrintCourses(func:alloftext(name,$name)) {
             description
             registration_spaces
             keywords
@@ -386,7 +386,7 @@ def FollowsCourse(FollowsOption):
     connection = DBconnections.DGRAPH
     query = """
     query FollowOption($name: string) {
-      FollowOption(func: eq(name, $name)) {
+      FollowOption(func: alloftext(name, $name)) {
         suscribed {
           name
           start_date
