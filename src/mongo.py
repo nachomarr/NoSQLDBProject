@@ -3,9 +3,10 @@ from src.databases import DBconnections
 
 def createIndexes():
     
-    DBconnections.MONGO['users'].create_index('email', unique=True)
-    DBconnections.MONGO['courses'].create_index('instructor_id')
-
+    DBconnections.MONGO['users'].create_index([('name', 'text')], name="text_index_instructor_name") 
+    DBconnections.MONGO['courses'].create_index([('name', 'text')], name="text_index_course_name")   
+    DBconnections.MONGO['courses'].create_index([('id', 1)], name="index_course_id")
+    
 
 def loadData():
     try:
@@ -28,6 +29,9 @@ def loadData():
             DBconnections.MONGO['courses'].insert_many(courses)
         else:
             print("Error en el formato de datos: 'courses' debe ser una lista.")
+
+    createIndexes()
+    
 
 def deleteData():
     DBconnections.MONGO['users'].delete_many({})
@@ -120,35 +124,39 @@ def getCourseDetails():
 
 def searchCoursesByTitle():
     title = input("Enter course title: ")
-    courses = list(DBconnections.MONGO['courses'].find({'name': {'$regex': title, '$options': 'i'}}).sort('average_grade')) 
+
+    courses = list(DBconnections.MONGO['courses'].find({'$text': {'$search': title}}).sort('score', {'$meta': 'textScore'}))
+
     if courses:
         print(f"Found {len(courses)} course(s) matching the title '{title}':")
         paginateResults(
-            courses, 
+            courses,
             format_func=lambda x: f"  - Name: {x.get('name', 'N/A')} (ID: {x.get('id', 'N/A')})"
         )
     else:
-        print("No courses found with that title")
+        print("No courses found with that title.")
 
 
 def searchCoursesByInstructor():
     instructor_name = input("Enter instructor name: ")
-    instructor = DBconnections.MONGO['users'].find_one({'name': {'$regex': instructor_name, '$options': 'i'}})
+
+    instructor = DBconnections.MONGO['users'].find_one({'$text': {'$search': instructor_name}})
+    
     if instructor:
         instructor_id = instructor['id']
-        courses = list(DBconnections.MONGO['courses'].find({'instructor_id': instructor_id}))
+
+        courses = list(DBconnections.MONGO['courses'].find({'instructor_id': instructor_id}).sort('name'))
+        
         if courses:
             print(f"Found {len(courses)} course(s) taught by '{instructor_name}':")
-            for course in courses[:3]:  # Mostrar solo los primeros 3 cursos
-                print(f"  - Name: {course.get('name', 'N/A')} (ID: {course.get('id', 'N/A')})")
-            if len(courses) > 3:
-                print(f"  ... and {len(courses) - 3} more")
+            paginateResults(
+                courses,
+                format_func=lambda x: f"  - Name: {x.get('name', 'N/A')} (ID: {x.get('id', 'N/A')})"
+            )
         else:
-            print("No courses found for that instructor")
+            print(f"No courses found for the instructor '{instructor_name}'.")
     else:
-        print("Instructor not found")
-
-
+        print(f"Instructor '{instructor_name}' not found.")
 
 def getAverageFinalGradePerCourse():
 
